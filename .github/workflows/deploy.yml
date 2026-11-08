@@ -1,0 +1,58 @@
+name: Build and deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '30 15 * * *'   # 매일 KST 00:30 — 일일 호출 한도가 갱신된 직후 1365 봉사 목록·상세 수집
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install requests
+      - name: Fetch list + details (개발계정 일일 한도 ~1,000회 — 예산 900건, 상세는 data/details 에 누적 커밋)
+        if: github.event_name != 'push'
+        env:
+          API_KEY: ${{ secrets.API_KEY }}
+          DAILY_BUDGET: '900'
+        run: python scripts/fetch_data.py
+        continue-on-error: true
+      - name: Commit new details
+        if: github.event_name != 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/details data/list.json.gz
+          git diff --cached --quiet || (git commit -m "Update volunteer data" && git push)
+      - name: Build site
+        run: python scripts/build_site.py
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
