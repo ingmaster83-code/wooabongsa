@@ -105,8 +105,6 @@ def fetch_tags(det, total):
     """목록 필터로 상세 없이도 청소년 가능·분야를 알아낸다(필터 호출 ~15회).
     분야 코드(upperClCode)는 처음 한 번 후보 코드를 찔러 알아내 data/catcodes.json 에 저장한다.
     코드→분야 이름은 상세(srvcClCode)가 있는 프로그램의 다수결로 정한다."""
-    youth = [x["progrmRegistNo"] for x in fetch_list(quiet=True, yngbgsPosblAt="Y")]
-    print("  청소년 가능", len(youth), "건")
     cp = DATA / "catcodes.json"
     codes = json.loads(cp.read_text(encoding="utf-8")) if cp.exists() else None
     if codes is None:
@@ -132,7 +130,7 @@ def fetch_tags(det, total):
             if d and d.get("srvcClCode"):
                 votes[d["srvcClCode"]] = votes.get(d["srvcClCode"], 0) + 1
         label[c] = max(votes, key=votes.get) if votes else c
-    out = {"youth": youth, "cat": {}}
+    out = {"cat": {}}
     for c, ids in cats.items():
         out["cat"].setdefault(label[c], []).extend(ids)
     print("  분야", {k: len(v) for k, v in out["cat"].items()})

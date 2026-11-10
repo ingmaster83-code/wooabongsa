@@ -223,7 +223,8 @@ def page_program(p, by_gugun, by_org, hubs, dup):
 def build():
     ps, tags, gname = load()
     print("프로그램", len(ps), "상세 보유", sum(1 for p in ps if p["d"]), "시군구 이름 확인", len({p["gcode"] for p in ps if p["gugun"]}), "/", len({p["gcode"] for p in ps}))
-    youth_ids = set(tags.get("youth", [])) if tags else {p["id"] for p in ps if p["d"] and p["d"].get("yngbgsPosblAt") == "Y"}
+    # 청소년 가능 여부는 상세(yngbgsPosblAt)로만 확실히 알 수 있다. 목록 필터(yngbgsPosblAt=Y)는 거의 전부(9.5k/9.6k)를 돌려줘 쓰지 않는다.
+    youth_ids = {p["id"] for p in ps if p["d"] and p["d"].get("yngbgsPosblAt") == "Y"}
     by_sido, by_gugun, by_org, by_gname = collections.defaultdict(list), collections.defaultdict(list), collections.defaultdict(list), collections.defaultdict(list)
     for p in ps:
         by_sido[p["sido"]].append(p)
@@ -294,7 +295,7 @@ def build():
     Y.sort(key=lambda p: (p["d"] is None, recency(p)))
     ys = collections.Counter(p["sido"] for p in Y)
     body = ['<div class="page-head"><h1>청소년 자원봉사 모집 %d건</h1><p>청소년 참여가 가능한 것으로 등록된 봉사활동</p></div>' % len(Y),
-            '<p class="lead">1365자원봉사포털에서 <b>청소년 참여 가능</b>으로 등록된 봉사활동 <b>%d건</b>입니다. 시도별로 나눠 볼 수 있고, 학교 봉사활동 시간이 필요한 경우 모집 기관에 시간 인정 여부를 미리 확인하세요.</p>' % len(Y), ad(),
+            '<p class="lead">1365자원봉사포털에서 <b>청소년 참여 가능</b>으로 등록된 봉사활동 <b>%d건</b>입니다(상세 정보가 확인된 %d건의 프로그램 기준이며, 상세는 매일 늘어납니다). 학교 봉사활동 시간이 필요한 경우 모집 기관에 시간 인정 여부를 미리 확인하세요.</p>' % (len(Y), sum(1 for p in ps if p["d"])), ad(),
             '<div class="chips">%s</div>' % "".join('<a class="chip" href="/youth/%s/">%s <small>%d</small></a>' % (q(s), esc(short_sido(s)), n) for s, n in ys.most_common()),
             '<h2 class="group-title">최근 등록된 청소년 봉사활동</h2>', ptable(Y, 150, show_region=True)]
     faq = [("청소년도 봉사활동을 신청할 수 있나요?", "프로그램마다 청소년 참여 가능 여부가 다릅니다. 이 목록은 청소년 참여 가능으로 등록된 프로그램입니다. 연령·보호자 동의 등 조건은 모집 기관에 확인하세요."),
